@@ -8,6 +8,7 @@ Single LLM Chat Frontend for multiple LLM API providers like OpenAI, Anthropic, 
 -Have less downtime for critical LLM services via robust failover systems that swap LLM backends if there is an outtage of one provider  
 
 ## Installation
+-Clone this repository  
 -Install the necessary python packages  
 ```
 # Install these packages
@@ -17,7 +18,9 @@ python3 -m pip install openai dotenv
 python3 -m pip install anthropic
 python3 -m pip install ollama
 ```
+-Create a new folder for your code and copy the .env file there.  
 -Put your api keys in the .env file.  
+-Now you are ready to go.  
 
 ## Usage
 
