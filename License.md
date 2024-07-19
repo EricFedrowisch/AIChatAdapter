@@ -1,0 +1,1 @@
+[AI Chat Adapter](https://github.com/EricFedrowisch/AIChatAdapter) by [Eric Fedrowisch](https://github.com/EricFedrowisch) is licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/?ref=chooser-v1)
