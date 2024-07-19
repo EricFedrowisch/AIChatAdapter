@@ -19,12 +19,12 @@ log = logging.getLogger() # Get local ref for logger
 load_dotenv() # Load environment variables from .env file
 
 # Default models are here for easy modification and updating.
-openai_default_model = "gpt-4o"
-anthropic_default_model = "claude-3-5-sonnet-20240620"
-local_default_model = "NousResearch/Hermes-2-Pro-Mistral-7B-GGUF"
-ollama_default_model = "llama3"
+openai_default_model = os.getenv("openai_default_model")
+anthropic_default_model = os.getenv("anthropic_default_model")
+local_default_model = os.getenv("local_default_model")
+ollama_default_model = os.getenv("ollama_default_model")
 # Local LMStudio Settings
-lm_studio_base_url = "http://localhost:1234/v1"
+lm_studio_base_url = os.getenv("lm_studio_base_url")
 
 
 class AIChatAdapter:
