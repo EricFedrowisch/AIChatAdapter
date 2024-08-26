@@ -7,6 +7,7 @@ import asyncio
 import copy
 import logging
 import os
+import threading  # Added for threading support
 from typing import Callable, Dict, List, Optional
 # 3rd Party Imports
 from dotenv import load_dotenv
@@ -25,6 +26,29 @@ local_default_model = os.getenv("local_default_model")
 ollama_default_model = os.getenv("ollama_default_model")
 # Local LMStudio Settings
 lm_studio_base_url = os.getenv("lm_studio_base_url")
+
+class EventLoopThread(threading.Thread):
+    """Runs the asyncio event loop in a separate thread."""
+    def __init__(self):
+        super().__init__(daemon=True)
+        self.loop = asyncio.new_event_loop()
+        self._stopping = threading.Event()
+
+    def run(self):
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    def stop(self):
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        self._stopping.set()
+
+    def get_loop(self):
+        return self.loop
+
+
+# Initialize the event loop in a separate thread
+event_loop_thread = EventLoopThread()
+event_loop_thread.start()
 
 
 class AIChatAdapter:
@@ -48,13 +72,17 @@ class AIChatAdapter:
                 case "ollama":
                     self.client = OllamaWrapper(model=model)
                 case "local":
-                    self.client = LocalWrapper(model=model)
+                    self.client = LMStudio(model=model)
                 case _:
                     raise Exception(f"Exception initializing AIChatAdapter: Backend Argument matches no available backend type.")
         except Exception as e:
             raise Exception(f"Exception initializing AIChatAdapter: {e}")
 
-    async def get_response(self, message: str = "", role: str = "user") -> str:
+    def get_response(self, message: str = "", role: str = "user") -> str:
+        """Get a single response string from a client."""
+        return asyncio.run_coroutine_threadsafe(self._get_response(message=message, role=role), event_loop_thread.get_loop()).result()
+
+    async def _get_response(self, message: str = "", role: str = "user") -> str:
         """Get a single response string from a client."""
         try:
             self.chat.update(content=message, role=role)
@@ -67,18 +95,6 @@ class AIChatAdapter:
         except Exception as e:
             raise Exception(f"Exception getting ai response: {e}")
         return None
-
-    async def get_stream(self, message: str = "", role: str = "user", tools: List[Dict] = []):
-        """Get a single response as a stream from a chat completion api call."""
-        try:
-            self.chat.update(content=message, role=role)
-            stream = await self.client.get_stream(
-                messages=self.chat.messages,
-                tools=self.tools,
-            )
-            self.chat.update(**stream)
-        except Exception as e:
-            raise Exception(f"Exception getting ai stream: {e}")
 
 
 class OpenAIWrapper:
@@ -107,22 +123,6 @@ class OpenAIWrapper:
         except Exception as e:
             raise Exception(f"Exception getting OpenAI response: {e}")
         return None
-
-    # TODO: Need to make a robust StreamWrapper class that can actually yield chunks.
-    async def get_stream(self, messages: List[Dict], tools: List[Dict] = []):
-        """Get a single response as a stream from a chat completion api call."""
-        try:
-            stream = await self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                stream=True,
-            )
-            msg = ""
-            async for chunk in stream:
-                msg = msg + (chunk.choices[0].delta.content or "")  # print(chunk.choices[0].delta.content or "", end="")
-            return {"role": "assistant", "content": str(msg)}
-        except Exception as e:
-            raise Exception(f"Exception getting OpenAI stream: {e}")
 
 class AnthropicWrapper:
     """AI API client wrapper for Anthropic message requests."""
@@ -187,7 +187,7 @@ class AnthropicWrapper:
         return merged_messages
 
 
-class LocalWrapper:
+class LMStudio:
     """AI API client wrapper for getting chat completions from a local LM Studio server."""
     def __init__(self, model:str = local_default_model):
         # Point to the local server
@@ -253,47 +253,37 @@ class ChatBuffer:
 if __name__ == "__main__":
     pass
     # Code Examples. Uncomment to run.
+
     # ChatBuffer Example.
     # chat = ChatBuffer(system_prompt="Foo and then bar, pls.")
     # chat.update(content="No, you foo.", role="user")
     # print(chat)
 
     # Local LM Studio Example
-    # print(f"Local LLM Example Response (LM Studio running {local_default_model}):")
-    # local_client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="local")
-    # loop = asyncio.get_event_loop()
-    # response = loop.run_until_complete(local_client.get_response("What is the capital of France?"))
+    # model = "Meta-Llama-3-8B-Instruct-GGUF"
+    # print(f"Local LLM Example Response (LM Studio running {model}):")
+    # local_client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="local", model=model)
+    # response = local_client.get_response("What is the capital of France?")
     # for msg in local_client.chat.messages:
     #     print(msg)
 
     # OpenAI Example
     # print("\nOpenAI Example Response:")
     # oai_client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="openai")
-    # loop = asyncio.get_event_loop()
-    # response = loop.run_until_complete(oai_client.get_response("What is the capital of France?"))
-    # for msg in oai_client.chat.messages:
-    #     print(msg)
-
-    # OpenAI Stream Example
-    # print("\nOpenAI Example Stream:")
-    # oai_client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="openai")
-    # loop = asyncio.get_event_loop()
-    # stream = loop.run_until_complete(oai_client.get_stream("What is the capital of France?"))
+    # response = oai_client.get_response("What is the capital of France?")
     # for msg in oai_client.chat.messages:
     #     print(msg)
 
     # Anthropic Example
     # print("\nAnthropic Example Response:")
     # anth_client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="anthropic")
-    # loop = asyncio.get_event_loop()
-    # response = loop.run_until_complete(anth_client.get_response("What is the capital of France?"))
+    # response = anth_client.get_response("What is the capital of France?")
     # for msg in anth_client.chat.messages:
     #     print(msg)
 
     # Ollama Example
     # print(f"\nOllama Example Response running {ollama_default_model}:")
     # ollama_client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="ollama")
-    # loop = asyncio.get_event_loop()
-    # response = loop.run_until_complete(ollama_client.get_response("What is the capital of France?"))
+    # response = ollama_client.get_response("What is the capital of France?")
     # for msg in ollama_client.chat.messages:
     #     print(msg)
