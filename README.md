@@ -1,11 +1,17 @@
 # AIChatAdapter
-Single LLM Chat Frontend for multiple LLM API providers like OpenAI, Anthropic, Ollama and LM Studio.  
+
+AIChatAdapter is a powerful tool that simplifies integrating and switching  
+between multiple Large Language Model (LLM) API providers, such as OpenAI,  
+Anthropic, Ollama, and LM Studio, with minimal code changes. This adapter  
+provides a single, consistent interface, allowing you to focus on building  
+your application without getting bogged down in the specifics of each LLM service.  
 
 ## Use Cases
 
 -Simplify your code by decoupling the LLM backend from the rest of your code  
 -Easily test various LLMs against one another for quality, speed, etc  
--Have less downtime for critical LLM services via robust failover systems that swap LLM backends if there is an outtage of one provider  
+-Have less downtime for critical LLM services via robust failover
+systems that swap LLM backends if there is an outtage of one provider  
 
 ## Installation
 -Clone this repository  
@@ -18,7 +24,7 @@ python3 -m pip install openai dotenv
 python3 -m pip install anthropic
 python3 -m pip install ollama
 ```
--Create a new folder for your code and copy the .env file there.  
+-Create a new folder for your code and copy the .env config file there.  
 -Put your api keys in the .env file.  
 -Now you are ready to go.  
 
@@ -27,18 +33,15 @@ python3 -m pip install ollama
 ### Example using OpenAI, the default backend
 Here's an example of how to get a chat completion response from OpenAI.  
 ```python
-import asyncio
-from AIChatAdapter import AIChatAdapter
+from AIChatAdapter import AIChatAdapter  
 
-# Initialize the Chat Adapter with a system prompt (OpenAI is default backend)
-client = AIChatAdapter(system_prompt="Answer as best as you can.")
-# Get the main event loop. All calls are asynchronous.
-loop = asyncio.get_event_loop()
-# Get a response.
-response = loop.run_until_complete(client.get_response("What is the capital of France?"))
-# Print the chat buffer.
-for msg in client.chat.messages:
-    print(msg)
+# Initialize the Chat Adapter with a system prompt (OpenAI is default backend)  
+client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="openai")  
+# Get a response. All calls are asynchronous  
+response = client.get_response("What is the capital of France?")  
+# Print the chat messages.
+for msg in client.chat.messages:  
+    print(msg)  
 ```
 This should print out something like this:  
 ```bash
@@ -50,13 +53,11 @@ This should print out something like this:
 ### Example using the Anthropic backend.
 Nearly identical to default example, except using Anthropic as the backend.  
 ```python
-import asyncio
 from AIChatAdapter import AIChatAdapter
 
 # Initialize the Chat Adapter with Anthropic as backend
 client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="anthropic")
-loop = asyncio.get_event_loop()
-response = loop.run_until_complete(client.get_response("What is the capital of France?"))
+response = client.get_response("What is the capital of France?")
 for msg in client.chat.messages:
     print(msg)
 ```
@@ -78,12 +79,10 @@ ollama pull llama3
 ```
 Once you have Ollama running and the model downloaded, you can get a response with this python code.  
 ```python
-import asyncio
 from AIChatAdapter import AIChatAdapter
 
 client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="ollama")
-loop = asyncio.get_event_loop()
-response = loop.run_until_complete(client.get_response("What is the capital of France?"))
+response = client.get_response("What is the capital of France?")
 for msg in client.chat.messages:
     print(msg)
 ```
@@ -100,9 +99,9 @@ From this I got the response:
 -Click "Search" on the side bar. This will let you search for models to download.  
 -To use the default model choice, copy and paste into the search bar:  
 ```bash
-NousResearch/Hermes-2-Pro-Mistral-7B-GGUF
+Meta-Llama-3-8B-Instruct-GGUF
 ```
--Hit the "Go" button and download the "Hermes-2-Pro-Mistral-7B.Q2_K.gguf" model.  
+-Hit the "Go" button and download the model.  
 -Wait until the model is downloaded.  
 -Click "Local Server" in the side bar.  
 -At the top of that view, click "Select Model to Load" and load your model of choice.  
@@ -110,19 +109,14 @@ NousResearch/Hermes-2-Pro-Mistral-7B-GGUF
   
 The code to get a response is basically identical except for the backend specified:  
 ```python
-import asyncio
 from AIChatAdapter import AIChatAdapter
 
-client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="local")
-loop = asyncio.get_event_loop()
-response = loop.run_until_complete(client.get_response("What is the capital of France?"))
+model = "Meta-Llama-3-8B-Instruct-GGUF"
+client = AIChatAdapter(system_prompt="Answer as best as you can.", backend="local", model=model)
+response = client.get_response("What is the capital of France?")
 for msg in client.chat.messages:
     print(msg)
 ```
-This should give a response like:  
-```bash
-{'role': 'system', 'content': 'Answer as best as you can.'}
-{'role': 'user', 'content': 'What is the capital of France?'}
-{'role': 'assistant', 'content': '\n<dummy00022>: The capital of France is Paris.'}
-```
-You can also watch the response tokens being generated in the window at the bottom left of the "Local Server" view in LM Studio.  
+You can watch the response tokens being generated in the window at the bottom left of the "Local Server" view in LM Studio.  
+Most of the local models I've tested with are a bit over verbose, so you may want to limit their token generation length for
+faster replies.  
